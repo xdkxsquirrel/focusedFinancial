@@ -46,7 +46,7 @@ class GraphFinancials:
         def getROIC( ) -> list:
             roicList = []
             for index, row in self.financialStatements.iterrows():
-                roicList.append( (row["Net Income"] - (row["Shares Outstanding"] * row["Dividend"])) / (row["Equity"] + row["Debt"]) )
+                roicList.append( (row["Net Income"] - row["Dividends"]) / (row["Equity"] + row["Total Liabilities"]) )
             return roicList
 
         def getGrowth( financial : str ) -> list:
@@ -66,21 +66,30 @@ class GraphFinancials:
         fig = sp( rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.02 )
 
         # Cashflow Graph
-        yValues = ["Net Income", "Revenue", "Free Cash Flow", "R&D", "S&M", "G&A", "Capex"]
+        yValues = ["Net Income", "Free Cash Flow", "Revenue", "R&D", "S&M", "G&A", "Capex"]
+        colorValues = ["#0A9D00", "#0FFF00", "#5FFF54", "#000FFF", "#AC7600", "#FFaF00", "#FF0000"]
         for i in range(len(yValues)):
-            fig.add_trace( go.Bar( name=yValues[i], x=xValues, y=self.financialStatements[yValues[i]] ), row=1, col=1 )
+            fig.add_trace( go.Bar( name=yValues[i], x=xValues, y=self.financialStatements[yValues[i]], 
+                marker=dict(color=colorValues[i]) ), row=1, col=1 )
 
         # Balance Sheet Graph
-        yValues = ["Debt", "Cash", "Equity", "Shares Outstanding"]
+        yValues = ["Cash", "Equity", "Total Liabilities", "Long-term Debt", "Shares Outstanding"]
+        colorValues = ["#0A9D00", "#005006", "#FF0000", "#960000", "#000FFF"]
         for i in range(len(yValues)):
-            fig.add_trace( go.Bar( name=yValues[i], x=xValues, y=self.financialStatements[yValues[i]] ), row=2, col=1 )
+            fig.add_trace( go.Bar( name=yValues[i], x=xValues, y=self.financialStatements[yValues[i]],
+                marker=dict(color=colorValues[i]) ), row=2, col=1 )
 
         # Growths
-        fig.add_trace( go.Scatter( name="ROE", x=xValues, y=getROE() ), row=3, col=1 )
-        fig.add_trace( go.Scatter( name="ROIC", x=xValues, y=getROIC() ), row=3, col=1 )
+        colorValues = ["#003EFF", "#0000FF"]
+        fig.add_trace( go.Scatter( name="ROE", x=xValues, y=getROE(),
+            line=dict(width=2, color=colorValues[0]), marker=dict(color=colorValues[0]) ), row=3, col=1 )
+        fig.add_trace( go.Scatter( name="ROIC", x=xValues, y=getROIC(),
+            line=dict(width=2, color=colorValues[1]), marker=dict(color=colorValues[1]) ), row=3, col=1 )
         yValues = ["Net Income", "Revenue", "Free Cash Flow", "Equity"]
+        colorValues = ["#0A9D00", "#5FFF54", "#0FFF00", "#005006"]
         for i in range(len(yValues)):
-            fig.add_trace( go.Scatter( name=yValues[i] + " Growth Rate", x=xValues, y=getGrowth( yValues[i] ) ), row=3, col=1 )
+            fig.add_trace( go.Scatter( name=yValues[i] + " Growth Rate", x=xValues, y=getGrowth( yValues[i] ), 
+                line=dict(width=2, color=colorValues[i]), marker=dict(color=colorValues[i]) ), row=3, col=1 )
 
         # Top Text Values
         textValues = []

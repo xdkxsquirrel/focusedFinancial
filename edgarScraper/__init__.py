@@ -21,8 +21,9 @@ class Scraper:
         self.financialExcelList = []
         self.getCIK( )
         self.columnsDict = {"Net Income":0, "Free Cash Flow":1, "Revenue":2, "Cost of Revenue":3, 
-                            "Equity":4, "Debt":5, "Cash":6, "Shares Outstanding":7, "Dividend":8,
-                            "R&D":9, "S&M":10, "G&A":11, "Capex":12, "Operating Cash Flow":13}
+                            "Equity":4, "Total Liabilities":5, "Cash":6, "Shares Outstanding":7,
+                            "R&D":8, "S&M":9, "G&A":10, "Capex":11, "Operating Cash Flow":12,
+                            "Gross Margin":13, "Long-term Debt":14, "Dividends":15}
         self.columns = []
         for key in self.columnsDict:
             self.columns.append(key)
@@ -96,132 +97,101 @@ class Scraper:
                 if os.path.exists( filename ):
                     os.remove( filename )
 
-            def parseIncomeStatementData( df : pd.DataFrame, multiplier : int ):
-                grabNextValue = False
-                for _ , row in df.iterrows( ):
-                    stringSearchArray = [
-                    ["cost of revenue"],
-                    ["revenue"],
-                    ["net income"],
-                    ["research"],
-                    ["administrative"],
-                    ["marketing"],
-                    ["shares outstanding"]]
+            def cleanDataFrame( df : pd.DataFrame ) -> pd.DataFrame:
+                df = df.drop( [0] )
+                for i in range( len(list(df)) ):
+                    df.rename( columns = {list(df)[i]: str(i)}, inplace = True )
+                df.drop_duplicates( subset=['0'], inplace=True )
+                df.dropna( axis="columns", thresh=len(df) - 10, inplace=True)
+                df.dropna( inplace=True )
+                for i in range( len(list(df)) ):
+                    df.rename( columns = {list(df)[i]: str(i)}, inplace = True )
+                df = df[df["1"] != "'"]
+                return df
 
-                    if isinstance( row[0], str ):
-                        if any( ele in row[0].lower( ) for ele in stringSearchArray[0] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Cost of Revenue"]] = int( row[1] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[1] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Revenue"]] = int( row[1] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[2] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Net Income"]] = int( row[1] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[3] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["R&D"]] = int( row[1] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[4] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["G&A"]] = int( row[1] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[5] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["S&M"]] = int( row[1] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[6] ):
-                            grabNextValue = True
-                        elif grabNextValue:
-                            grabNextValue = False
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Shares Outstanding"]] = int( row[1] ) * multiplier
+            def parseIncomeStatementData( df : pd.DataFrame, multiplier : int ):
+                # List of values we want to capture and how they 
+                # might be labled in the excel sheet
+                valuesDict = {
+                    "Revenue": ["Revenue"],
+                    "Cost of Revenue": ["Cost of revenue"],
+                    "Gross Margin": ["Gross margin"],
+                    "Net Income": ["Net income"],
+                    "R&D": ["Research and development"],
+                    "G&A": ["General and administrative"],
+                    "S&M": ["Sales and Marketing"] }
+
+                df = cleanDataFrame( df )                
+
+                # Find and save the values we want
+                for key, value in valuesDict.items():
+                    for i in range(len(value)):
+                        currentValue = df.loc[df["0"].str.contains(value[i], case=False)]
+                        if not currentValue.empty:
+                            self.currentData[self.columnsDict[key]] = \
+                                currentValue.iloc[0]['1'] * multiplier
                 
             def parseBalanceSheetData( df : pd.DataFrame, multiplier : int ):
+                # List of values we want to capture and how they 
+                # might be labled in the excel sheet
+                valuesDict = {
+                    "Cash": ["Cash and cash equivalents"],
+                    "Equity": ["Total stockholders"],
+                    "Total Liabilities": ["Total liabilities"],
+                    "PPE": ["Property and equipment"],
+                    "Lease": ["lease"],
+                    "Capex": ["capital expenditure"],
+                    "Long-term Debt": ["Long-term debt"],
+                    "Shares Outstanding": ["Common stock"]}
+
                 ppe = 0
                 lease = 0
                 capex = 0
 
-                stringSearchArray = [
-                    ["cash equivalents"],
-                    ["total stock"],
-                    ["total liabilities"],
-                    ["equipment"],
-                    ["lease"],
-                    ["capital expenditure"]]
+                df = cleanDataFrame( df ) 
+            
+                df = df[df["0"] != "Current portion of long-term debt"]
+                # Find and save the values we want
+                for key, value in valuesDict.items():
+                    for i in range(len(value)):
+                        currentValue = df.loc[df["0"].str.contains(value[i], case=False)]
+                        if not currentValue.empty:
+                            if key == "PPE":
+                                ppe = currentValue.iloc[0]['1'] * multiplier
+                            elif key == "Lease":
+                                lease = currentValue.iloc[0]['1'] * multiplier
+                            elif key == "Capex":
+                                capex = currentValue.iloc[0]['1'] * multiplier
+                            else:
+                                self.currentData[self.columnsDict[key]] = \
+                                    currentValue.iloc[0]['1'] * multiplier
 
-                for _ , row in df.iterrows( ):
-                    if isinstance( row[0], str ):
-                        if any( ele in row[0].lower( ) for ele in stringSearchArray[0] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Cash"]] = int( row[1] ) * multiplier
-                                elif not isnan( row[2] ):
-                                    self.currentData[self.columnsDict["Cash"]] = int( row[2] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[1] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Equity"]] = int( row[1] ) * multiplier
-                                elif not isnan( row[2] ):
-                                    self.currentData[self.columnsDict["Equity"]] = int( row[2] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[2] ):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Debt"]] = int( row[1] ) * multiplier
-                                elif not isnan( row[2] ):
-                                    self.currentData[self.columnsDict["Debt"]] = int( row[2] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[3] ):
-                            if not isinstance( row[1], str ):
-                                if ppe == 0:
-                                    if not isnan( row[1] ):
-                                        ppe = int( row[1] ) * multiplier
-                                    elif not isnan( row[2] ):
-                                        ppe = int( row[2] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[4] ):
-                            if not isinstance( row[1], str ):
-                                if lease == 0:
-                                    if not isnan( row[1] ):
-                                        lease = int( row[1] ) * multiplier
-                                    elif not isnan( row[2] ):
-                                        lease = int( row[2] ) * multiplier
-                        elif any( ele in row[0].lower( ) for ele in stringSearchArray[5] ):
-                            if not isinstance( row[1], str ):
-                                if capex == 0:
-                                    if not isnan( row[1] ):
-                                        capex = int( row[1] ) * multiplier
-                                    elif not isnan( row[2] ):
-                                        capex = int( row[2] ) * multiplier
-                        if capex == 0:
-                            self.currentData[self.columnsDict["Capex"]] = ppe + lease
-                        else:
-                            self.currentData[self.columnsDict["Capex"]] = capex
+                # Special case for capex calculation TODO:Needs to be improved.
+                if capex == 0:
+                    self.currentData[self.columnsDict["Capex"]] = lease + ppe
+                else:
+                    self.currentData[self.columnsDict["Capex"]] = capex
 
             def parseCashflowStatementData( df : pd.DataFrame, multiplier : int ):
-                stringSearchArray = [
-                    ["cash from operations"]]
+                # List of values we want to capture and how they 
+                # might be labled in the excel sheet
+                valuesDict = {
+                    "Operating Cash Flow": ["Net cash from operations"],
+                    "Dividends": ["Common stock cash dividends paid"] }
 
-                for _ , row in df.iterrows( ):
-                    if isinstance( row[0], str ):
-                        if any(ele in row[0].lower( ) for ele in stringSearchArray[0]):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Operating Cash Flow"]] = int( row[1] ) * multiplier
-
-            def parseStockholdersStatementData( df : pd.DataFrame ):
-                stringSearchArray = [
-                    ["cash dividends"]]
-
-                for _ , row in df.iterrows( ):
-                    if isinstance( row[0], str ):
-                        if any(ele in row[0].lower( ) for ele in stringSearchArray[0]):
-                            if not isinstance( row[1], str ):
-                                if not isnan( row[1] ):
-                                    self.currentData[self.columnsDict["Dividend"]] = row[1]
-
+                df = cleanDataFrame( df )
+                
+                # Find and save the values we want
+                for key, value in valuesDict.items():
+                    for i in range(len(value)):
+                        currentValue = df.loc[df["0"].str.contains(value[i], case=False)]
+                        if not currentValue.empty:
+                            if key == "Dividends":
+                                self.currentData[self.columnsDict[key]] = \
+                                    currentValue.iloc[0]['1'] * -multiplier
+                            else:
+                                self.currentData[self.columnsDict[key]] = \
+                                    currentValue.iloc[0]['1'] * multiplier
 
             fileNumber = 0
             for excelUrl in self.financialExcelList:
@@ -234,10 +204,9 @@ class Scraper:
                 gotIncome = False
                 gotBalance = False
                 gotCashflow = False
-                gotStockholders = False
                 multiplier = 1
                 year = 0
-                while not (gotIncome and gotBalance and gotCashflow and gotStockholders):
+                while not (gotIncome and gotBalance and gotCashflow):
                     worksheet = pd.read_excel( filename, sheet_name = i, engine = "openpyxl" )
                     i+=1
 
@@ -257,11 +226,10 @@ class Scraper:
                     elif ("cash" in worksheet.columns[0].lower( )) and (not gotCashflow):
                         parseCashflowStatementData( worksheet, multiplier )
                         gotCashflow = True
-                    elif ("stockholders" in worksheet.columns[0].lower( )) and (not gotStockholders):
-                        parseStockholdersStatementData( worksheet )
-                        gotStockholders = True
 
-                self.currentData[self.columnsDict["Free Cash Flow"]] = self.currentData[self.columnsDict["Operating Cash Flow"]] - self.currentData[self.columnsDict["Capex"]]
+                self.currentData[self.columnsDict["Free Cash Flow"]] = \
+                    self.currentData[self.columnsDict["Operating Cash Flow"]] \
+                        - self.currentData[self.columnsDict["Capex"]]
                 df = pd.DataFrame( [self.currentData], columns=self.columns, index=[year] )
                 self.financialStatements = pd.concat([df, self.financialStatements], axis=0)                  
                 deleteFile( filename )
@@ -276,7 +244,7 @@ def main():
     parser = ap( description="Get Financial Statement Data From SEC Edgar." )
     parser.add_argument( "ticker", type=str, help="Stock Ticker" )
     parser.add_argument( "-f", "--filename", type=str, required=False, help="CSV Output Filename" )
-    args = parser.parse_args( )    
+    args = parser.parse_args( )
     edgarScraper = Scraper( args.ticker )
     edgarScraper.getStatements()
 
