@@ -44,19 +44,22 @@ class Scraper:
 
     def getStatements( self ):
         def getListOfTenKs( ):
-            url = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={}&type=10-K&dateb=&owner=exclude&count=40&search_text="
+            filingType = "10-K"
             while True:
+                url = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={}&type={}&dateb=&owner=exclude&count=40&search_text="
                 time.sleep( TIME_TO_SLEEP )
-                f = requests.get( url.format( self.CIK ), headers=HEADERS )
+                f = requests.get( url.format( self.CIK, filingType ), headers=HEADERS )
                 soup = BeautifulSoup( f.content, "html5lib" )
                 for link in soup.findAll( "a", href=True, id="documentsbutton" ):
                     linkUrl = link["href"]
-                    if link.findPrevious( "td" ).findPrevious( "td" ).contents[0] == "10-K":
+                    if link.findPrevious( "td" ).findPrevious( "td" ).contents[0] == filingType:
                         self.tenKList.append( "http://www.sec.gov{}".format( linkUrl[:linkUrl.rindex('/')+1] ) )
                     if len( self.tenKList ) >= 10:
                         return
                 if len( self.tenKList ):
                     return
+                filingType = "20-F"
+                
 
         def getListOfFinancialExcel( ):
             for tenKUrl in self.tenKList:
@@ -101,27 +104,32 @@ class Scraper:
                 df = df.drop( [0] )
                 for i in range( len(list(df)) ):
                     df.rename( columns = {list(df)[i]: str(i)}, inplace = True )
-                df.drop_duplicates( subset=['0'], inplace=True )
+                df.drop_duplicates( subset=["0"], inplace=True )
+                print(df)
                 df.dropna( axis="columns", thresh=len(df) - 10, inplace=True)
                 df.dropna( inplace=True )
                 for i in range( len(list(df)) ):
                     df.rename( columns = {list(df)[i]: str(i)}, inplace = True )
-                df = df[df["1"] != "'"]
+                if "1" in df.columns:
+                    df = df[df["1"] != "'"]
+                else:
+                    print("Error in cleanDataFrame")
+                
                 return df
 
             def parseIncomeStatementData( df : pd.DataFrame, multiplier : int ):
                 # List of values we want to capture and how they 
                 # might be labled in the excel sheet
                 valuesDict = {
-                    "Revenue": ["Revenue"],
-                    "Cost of Revenue": ["Cost of revenue"],
+                    "Revenue": ["Revenue", "Net sales"],
+                    "Cost of Revenue": ["Cost of revenue", "Cost of goods"],
                     "Gross Margin": ["Gross margin"],
                     "Net Income": ["Net income"],
                     "R&D": ["Research and development"],
                     "G&A": ["General and administrative"],
                     "S&M": ["Sales and Marketing"] }
 
-                df = cleanDataFrame( df )                
+                df = cleanDataFrame( df )
 
                 # Find and save the values we want
                 for key, value in valuesDict.items():
@@ -142,7 +150,7 @@ class Scraper:
                     "Lease": ["lease"],
                     "Capex": ["capital expenditure"],
                     "Long-term Debt": ["Long-term debt"],
-                    "Shares Outstanding": ["Common stock"]}
+                    "Shares Outstanding": ["Common stock", "shares outstanding"]}
 
                 ppe = 0
                 lease = 0
@@ -209,15 +217,21 @@ class Scraper:
                 while not (gotIncome and gotBalance and gotCashflow):
                     worksheet = pd.read_excel( filename, sheet_name = i, engine = "openpyxl" )
                     i+=1
-
                     if ("income" in worksheet.columns[0].lower( )) and (not gotIncome):
                         if "$ in millions" in worksheet.columns[0].lower( ):
                             multiplier = 1000000
-                        elif "millions" in worksheet.iloc[0][0].lower():
-                            multiplier = 1000000
                         elif "$ in thousands" in worksheet.columns[0].lower( ):
                             multiplier = 1000
-                        year = int(worksheet.iloc[0][1].rsplit( ",", 1 )[-1])
+                        elif "millions" in worksheet.iloc[0][0].lower():
+                            multiplier = 1000000
+                        else:
+                            multiplier = 1
+                        if isinstance(worksheet.iloc[0][1], str):
+                            year = int(worksheet.iloc[0][1].rsplit( ",", 1 )[-1])
+                        elif isinstance(worksheet.iloc[0][2], str):
+                            year = int(worksheet.iloc[0][2].rsplit( ",", 1 )[-1])
+                        else:
+                            print(worksheet.iloc[0])
                         parseIncomeStatementData( worksheet, multiplier )
                         gotIncome = True
                     elif ("balance" in worksheet.columns[0].lower( )) and (not gotBalance):
@@ -232,7 +246,7 @@ class Scraper:
                         - self.currentData[self.columnsDict["Capex"]]
                 df = pd.DataFrame( [self.currentData], columns=self.columns, index=[year] )
                 self.financialStatements = pd.concat([df, self.financialStatements], axis=0)                  
-                deleteFile( filename )
+                #deleteFile( filename )
                 fileNumber+=1
 
         getListOfTenKs( )

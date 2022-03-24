@@ -113,7 +113,7 @@ class GraphFinancials:
         fig.show( )
 
 def main():
-    parser = ap( description="Get Financial Statement Data From SEC Edgar" )
+    parser = ap( description="Graph financial data grabbed from edgarScraper" )
     parser.add_argument( "ticker", type=str, help="Stock Ticker" )
     parser.add_argument( "-f", "--filename", type=str, required=False, help="CSV Input Filename" )
     parser.add_argument( "-g", "--growthRate", type=float, required=False, help="Expected Growth Rate of Company" )
