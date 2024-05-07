@@ -1,0 +1,8 @@
+html5lib
+pywin32
+bs4
+pandas
+openpyxl
+yfinance
+numpy-financial
+plotly
