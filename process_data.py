@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import numpy as np
+import yfinance as yf
 
 def process_data( ticker:str, things_to_capture:list ) -> dict:
     def get_average_of_thing( thing_dict:dict ):
@@ -57,6 +58,7 @@ def process_all_data( things_to_capture:list, save_data:bool=False ) -> pd.DataF
         f.extend( filenames )
 
     tickers = []
+    countries = []
 
     all_data = dict()
     csv_dict = dict()
@@ -65,8 +67,11 @@ def process_all_data( things_to_capture:list, save_data:bool=False ) -> pd.DataF
         extension = filename.find( ".json" )
         tickers.append( filename[0:extension] )
         all_data[filename[0:extension]] = process_data( filename[0:extension], things_to_capture )
+        yahoo_data = yf.Ticker( filename[0:extension] )
+        countries.append( yahoo_data.info['country'] )
 
     csv_dict['Ticker'] = tickers
+    csv_dict['Country'] = countries
 
     for thing in things_to_capture:
         thing_data = []
@@ -76,7 +81,8 @@ def process_all_data( things_to_capture:list, save_data:bool=False ) -> pd.DataF
             except Exception as e:
                 print( f"Ticker: {ticker} Thing: {thing} | {repr(e)}")
                 thing_data.append( np.NaN )
-        csv_dict[thing] = thing_data
+
+        csv_dict[thing] = thing_data    
         
     df = pd.DataFrame( csv_dict )
     if save_data:

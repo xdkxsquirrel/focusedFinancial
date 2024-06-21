@@ -29,3 +29,17 @@ def get_data( ticker:str ):
     company_facts = requests.get(url, headers=header).json()
     with open(outfile, 'w', encoding='utf-8') as f:
         json.dump(company_facts, f, ensure_ascii=False, indent=4)
+
+if __name__ == '__main__':
+    tickers = ["AAPL", "ABNB", "ACN", "ADBE", "ADI", "ADP", "ADSK", "ALL", "AMAT", "AMD", "AMZN", "APH",
+        "AVGO", "AXP", "BIIB", "BKNG", "BMY", "BSX", "BWA", "CAH", "CAT", "CF", "CI", "CL", "CLF",
+        "CLX", "CMG", "CMI", "COF", "COST", "CRM", "CSCO", "CTAS", "CTSH", "CVS", "DFS", "DHR", "EA",
+        "EL", "EW", "EXPD", "F", "FAST", "FFIV", "GOOGL", "GPC", "GRMN", "GWW", "HON", "HRL", "HSY", 
+        "HUM", "IBM", "INTC", "INTU", "ISRG", "ITW", "JNJ", "JNPR", "JPM", "K", "KHC", "KLAC", "KMB",
+        "KO", "LEN", "LRCX", "MA", "MAS", "MCHP", "MCO", "MET", "META", "MKC", "MNST", "MSFT", "NFLX",
+        "NKE", "NOW", "NTAP", "NUE", "NVDA", "PAYX", "PG", "PGR", "PHM", "QCOM", "RHI", "ROK", "SBUX",
+        "SEE", "SNA", "TEAM", "TTD", "UBER", "UNH", "UPS", "V", "WM", "ZM"]
+    for ticker in tickers:
+        get_data( ticker )
+        print( f"Got {ticker}" )
+    print( "DONE" )
