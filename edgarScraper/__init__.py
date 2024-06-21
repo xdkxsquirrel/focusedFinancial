@@ -217,7 +217,7 @@ class Scraper:
                             multiplier = 1000000
                         elif "$ in thousands" in worksheet.columns[0].lower( ):
                             multiplier = 1000
-                        year = int(worksheet.iloc[0][1].rsplit( ",", 1 )[-1])
+                        # year = int(worksheet.iloc[0][1].rsplit( ",", 1 )[-1])
                         parseIncomeStatementData( worksheet, multiplier )
                         gotIncome = True
                     elif ("balance" in worksheet.columns[0].lower( )) and (not gotBalance):
@@ -227,9 +227,9 @@ class Scraper:
                         parseCashflowStatementData( worksheet, multiplier )
                         gotCashflow = True
 
-                self.currentData[self.columnsDict["Free Cash Flow"]] = \
-                    self.currentData[self.columnsDict["Operating Cash Flow"]] \
-                        - self.currentData[self.columnsDict["Capex"]]
+                # self.currentData[self.columnsDict["Free Cash Flow"]] = \
+                #     self.currentData[self.columnsDict["Operating Cash Flow"]] \
+                #         - self.currentData[self.columnsDict["Capex"]]
                 df = pd.DataFrame( [self.currentData], columns=self.columns, index=[year] )
                 self.financialStatements = pd.concat([df, self.financialStatements], axis=0)                  
                 deleteFile( filename )
@@ -238,7 +238,7 @@ class Scraper:
         getListOfTenKs( )
         getListOfFinancialExcel( )
         saveExcelSheets( )
-        parseExcelSheets( )
+        # parseExcelSheets( )
 
 def main():
     parser = ap( description="Get Financial Statement Data From SEC Edgar." )

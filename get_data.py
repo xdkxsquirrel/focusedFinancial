@@ -24,7 +24,7 @@ def get_data( ticker:str ):
         return str(results[0])
 
     CIK = getCIK(ticker)
-    outfile = ticker + ".json"
+    outfile = "database\\" + ticker + ".json"
     url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{str(CIK).zfill(10)}.json"
     company_facts = requests.get(url, headers=header).json()
     with open(outfile, 'w', encoding='utf-8') as f:
