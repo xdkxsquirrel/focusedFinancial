@@ -84,10 +84,12 @@ def create_dash_gui() -> None:
         prevent_initial_call=True
     )
     def process_all_stocks_data( n_clicks ):
-        things_to_capture = [ "GrossProfit", "CostOfRevenue" ]
-        df = process_all_data( things_to_capture )
+        df = process_all_data( )
 
-        return dash_table.DataTable(df.to_dict('records'), [{"name": i, "id": i} for i in df.columns])
+        return dash_table.DataTable( df.to_dict('records'), 
+                                    [{"name": i, "id": i} for i in df.columns], 
+                                    sort_action="native",
+                                    sort_mode="single" )
     
     @callback(
         Output( "main-display", "children" ),

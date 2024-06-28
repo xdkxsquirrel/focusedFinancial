@@ -1,6 +1,6 @@
 from argparse import ArgumentParser as ap
 import pandas as pd
-import yfinance as yf
+import test as yf
 from plotly.subplots import make_subplots as sp
 import plotly.graph_objects as go
 import numpy_financial as np

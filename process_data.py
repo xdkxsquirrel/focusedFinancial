@@ -3,6 +3,13 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 
+def get_json( ticker:str ) -> json.load:
+    f = open( "database\\" + ticker + ".json" )
+    return json.load( f )
+
+def get_average_roic( ticker:str ):
+    data = get_json( ticker )
+
 def process_data( ticker:str, things_to_capture:list ) -> dict:
     def get_average_of_thing( thing_dict:dict ):
         previous_thing = 0
@@ -16,8 +23,7 @@ def process_data( ticker:str, things_to_capture:list ) -> dict:
         data_to_return[thing]['averages'] = thing_percentages
 
     data_to_return = dict()
-    f = open( "database\\" + ticker + ".json" )
-    data = json.load( f )
+    data = get_json( ticker )
     
     for thing in things_to_capture:
         try:
@@ -35,8 +41,7 @@ def process_data( ticker:str, things_to_capture:list ) -> dict:
 
 def get_graphing_data( ticker:str, things_to_capture:list ):
     data_to_return = dict()
-    f = open( "database\\" + ticker + ".json" )
-    data = json.load( f )
+    data = get_json( ticker )
     
     for thing in things_to_capture:
         try:
@@ -51,7 +56,7 @@ def get_graphing_data( ticker:str, things_to_capture:list ):
 
     return data_to_return
 
-def process_all_data( things_to_capture:list, save_data:bool=False ) -> pd.DataFrame:
+def process_all_data( save_data:bool=False ) -> pd.DataFrame:
     from os import walk
     f = []
     for ( dirpath, dirnames, filenames ) in walk( "database\\" ):
